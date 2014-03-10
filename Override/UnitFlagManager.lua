@@ -7,7 +7,7 @@ local g_CivilianManager = InstanceManager:new( "NewUnitFlag", "Anchor", Controls
 local g_AirCraftManager = InstanceManager:new( "NewUnitFlag", "Anchor", Controls.AirCraftFlags );
 
 local g_MasterList = {};
-local g_LastiPlayer;
+local g_LastPlayerID;
 local g_LastUnitID;
 local g_PrintDebug = false;
 local g_GarrisonedUnitFlagsInStrategicView = true;
@@ -52,7 +52,7 @@ local g_UnitFlagClass =
     m_Health   = 1,
     
     m_Player   = -1,
-    m_iPlayer = -1,
+    m_PlayerID = -1,
     m_CivID    = -1,
     m_UnitID   = -1,
     
@@ -70,15 +70,15 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     -- constructor
     ------------------------------------------------------------------
-    new = function( self, iPlayer, unitID, fogState, invisible )
+    new = function( self, playerID, unitID, fogState, invisible )
         local o = {};
         setmetatable( o, self );
         self.__index = self;
         o.m_Instance = {};
         
-        if( iPlayer ~= -1 )
+        if( playerID ~= -1 )
         then
-			local pUnit = Players[ iPlayer ]:GetUnitByID( unitID );
+			local pUnit = Players[ playerID ]:GetUnitByID( unitID );
 			
 		    if( pUnit:IsCombatUnit() and not pUnit:IsEmbarked()) then
                 o.m_InstanceManager = g_MilitaryManager;
@@ -92,7 +92,7 @@ local g_UnitFlagClass =
             end
 
             o.m_Instance = o.m_InstanceManager:GetInstance();
-            o:Initialize( iPlayer, unitID, fogState, invisible );
+            o:Initialize( playerID, unitID, fogState, invisible );
            
             ---------------------------------------------------------
             -- Can carry units
@@ -109,13 +109,13 @@ local g_UnitFlagClass =
 
             ---------------------------------------------------------
             -- build the table for this player and store the flag
-            local playerTable = g_MasterList[ iPlayer ];
+            local playerTable = g_MasterList[ playerID ];
             if playerTable == nil 
             then
                 playerTable = {};
-                g_MasterList[ iPlayer ] = playerTable
+                g_MasterList[ playerID ] = playerTable
             end
-            g_MasterList[ iPlayer ][ unitID ] = o;
+            g_MasterList[ playerID ][ unitID ] = o;
             
             -- If the unit is cargo, link to the carrier, if it is already created.  If not, the carrier will create the link
             if (pUnit:IsCargo() and o.m_CarrierFlag == nil) then
@@ -132,7 +132,7 @@ local g_UnitFlagClass =
 	        
 			-- Threatening? (Disabled)
 			--if (pUnit:IsThreateningAnyMinorCiv()) then
-				--OnMarkThreateningEvent( iPlayer, unitID, true )
+				--OnMarkThreateningEvent( playerID, unitID, true )
 			--else
 	            --o:SetFlash( false );
 			--end
@@ -146,17 +146,17 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     -- constructor
     ------------------------------------------------------------------
-    Initialize = function( o, iPlayer, unitID, fogState, invisible )
-        o.m_Player = Players[ iPlayer ];
-        o.m_iPlayer = iPlayer;
+    Initialize = function( o, playerID, unitID, fogState, invisible )
+        o.m_Player = Players[ playerID ];
+        o.m_PlayerID = playerID;
         o.m_UnitID = unitID;
         
-        if( g_PrintDebug ) then print( string.format( "Creating UnitFlag for: Player[%i] Unit[%i]", iPlayer, unitID ) ); end
+        if( g_PrintDebug ) then print( string.format( "Creating UnitFlag for: Player[%i] Unit[%i]", playerID, unitID ) ); end
         
-		local pUnit = Players[ iPlayer ]:GetUnitByID( unitID );
+		local pUnit = Players[ playerID ]:GetUnitByID( unitID );
         if( pUnit == nil )
         then
-            print( string.format( "Unit not found for UnitFlag: Player[%i] Unit[%i]", iPlayer, unitID ) );
+            print( string.format( "Unit not found for UnitFlag: Player[%i] Unit[%i]", playerID, unitID ) );
             return nil;
         end
      
@@ -183,13 +183,13 @@ local g_UnitFlagClass =
         local team = o.m_Player:GetTeam();
         			
 		if (o.m_Player:IsHuman()) then
-            o.m_Instance.NormalButton:SetVoid1( iPlayer );
+            o.m_Instance.NormalButton:SetVoid1( playerID );
             o.m_Instance.NormalButton:SetVoid2( unitID );
             o.m_Instance.NormalButton:RegisterCallback( Mouse.eLClick, UnitFlagClicked );
             o.m_Instance.NormalButton:RegisterCallback( Mouse.eMouseEnter, UnitFlagEnter );
             o.m_Instance.NormalButton:RegisterCallback( Mouse.eMouseExit, UnitFlagExit );
             
-            o.m_Instance.HealthBarButton:SetVoid1( iPlayer );
+            o.m_Instance.HealthBarButton:SetVoid1( playerID );
             o.m_Instance.HealthBarButton:SetVoid2( unitID );
             o.m_Instance.HealthBarButton:RegisterCallback( Mouse.eLClick, UnitFlagClicked );
             o.m_Instance.HealthBarButton:RegisterCallback( Mouse.eMouseEnter, UnitFlagEnter );
@@ -212,13 +212,13 @@ local g_UnitFlagClass =
             o.m_Instance.NormalButton:SetDisabled( true );
             o.m_Instance.NormalButton:SetConsumeMouseOver( false );
             o.m_Instance.NormalButton:RegisterCallback( Mouse.eMouseEnter, function() 
-				local pMouseOverUnit = Players[ iPlayer ]:GetUnitByID( unitID );
+				local pMouseOverUnit = Players[ playerID ]:GetUnitByID( unitID );
 				if (pMouseOverUnit ~= nil) then
 					Game.MouseoverUnit(pMouseOverUnit,true);
 				end
 				end);
             o.m_Instance.NormalButton:RegisterCallback( Mouse.eMouseExit, function() 
-				local pMouseOverUnit = Players[ iPlayer ]:GetUnitByID( unitID );
+				local pMouseOverUnit = Players[ playerID ]:GetUnitByID( unitID );
 				if (pMouseOverUnit ~= nil) then
 					Game.MouseoverUnit(pMouseOverUnit,false);
 				end
@@ -282,7 +282,7 @@ local g_UnitFlagClass =
 		    end
 		    
             self.m_InstanceManager:ReleaseInstance( self.m_Instance );
-            g_MasterList[ self.m_iPlayer ][ self.m_UnitID ] = nil;
+            g_MasterList[ self.m_PlayerID ][ self.m_UnitID ] = nil;
         end
     end,
     
@@ -310,7 +310,7 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     SetUnitType = function( self )
             
-        local unit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+        local unit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if unit == nil then
 			return;
 		end
@@ -379,13 +379,13 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     UpdateHealth = function( self )
     
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if pUnit == nil then
 			return;
 		end	
 			
         local healthPercent = math.max( math.min( pUnit:GetCurrHitPoints() / pUnit:GetMaxHitPoints(), 1 ), 0 );
-        if( g_PrintDebug ) then print( "Setting health: " .. tostring( healthPercent ) .. " " .. tostring( self.m_iPlayer ) .. " " .. tostring( self.m_UnitID ) ); end
+        if( g_PrintDebug ) then print( "Setting health: " .. tostring( healthPercent ) .. " " .. tostring( self.m_PlayerID ) .. " " .. tostring( self.m_UnitID ) ); end
     
         -- going to damaged state
         if( healthPercent < 1 )
@@ -454,7 +454,7 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     UpdateSelected = function( self, isSelected )
         self.m_IsSelected = isSelected; --self.m_Unit:IsSelected();
-        if( g_PrintDebug ) then print( "Setting selected: " .. tostring( self.m_IsSelected ) .. " " .. tostring( self.m_iPlayer ) .. " " .. tostring( self.m_UnitID ) ); end
+        if( g_PrintDebug ) then print( "Setting selected: " .. tostring( self.m_IsSelected ) .. " " .. tostring( self.m_PlayerID ) .. " " .. tostring( self.m_UnitID ) ); end
         
         if( self.m_Health >= 1 )
         then
@@ -494,7 +494,7 @@ local g_UnitFlagClass =
         local textureName;
         local maskName;
         
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if pUnit == nil then
 			return;
 		end	
@@ -567,7 +567,7 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     UpdateName = function ( self )
             
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if pUnit == nil then
 			return;
 		end	
@@ -597,7 +597,7 @@ local g_UnitFlagClass =
 				string = string .. " - " .. Locale.Lookup(Game.GetReligionName(eReligion));
 			end
 			
-			if( iPlayer == Game.GetActivePlayer() ) then
+			if( playerID == Game.GetActivePlayer() ) then
                 string = string .. Locale.ConvertTextKey( "TXT_KEY_UPANEL_CLICK_TO_SELECT" );
 			end
 			self.m_Instance.UnitIcon:SetToolTipString( string );
@@ -617,7 +617,7 @@ local g_UnitFlagClass =
     CheckEscort = function( self )
         --if( nil == nil ) then return; end
         
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if pUnit == nil then
 			return;
 		end
@@ -643,7 +643,7 @@ local g_UnitFlagClass =
         then
             for i = 0, plot:GetNumUnits() - 1, 1
             do
-		        if( g_PrintDebug ) then print( string.format( "Determining Escort for: Player[%i] Unit[%i] - %i", self.m_iPlayer, self.m_UnitID, i ) ); end
+		        if( g_PrintDebug ) then print( string.format( "Determining Escort for: Player[%i] Unit[%i] - %i", self.m_PlayerID, self.m_UnitID, i ) ); end
 				
                 local test = plot:GetUnit( i );
                 if( test ~= nil and test:GetID() ~= self.m_UnitID and not test:IsGarrisoned() and not test:IsDead() and not test:IsDelayedDeath() )
@@ -682,7 +682,7 @@ local g_UnitFlagClass =
                 self.m_Escort:SetEscort( nil );
             end
             
-            if( g_PrintDebug ) then print( "Setting Escort to " .. tostring(escortFlag.m_iPlayer) .. " " .. tostring(escortFlag.m_UnitID)); end
+            if( g_PrintDebug ) then print( "Setting Escort to " .. tostring(escortFlag.m_PlayerID) .. " " .. tostring(escortFlag.m_UnitID)); end
             
             self:SetEscort( escortFlag );
             escortFlag:SetEscort( self );
@@ -690,7 +690,7 @@ local g_UnitFlagClass =
         -- we do not have a new escort, but we had an old one
         elseif ( self.m_Escort ~= nil )
         then
-            if( g_PrintDebug ) then print( "Clearing Both Escorts: " .. " " .. tostring( self.m_iPlayer ) .. " " .. tostring( self.m_UnitID ) ); end
+            if( g_PrintDebug ) then print( "Clearing Both Escorts: " .. " " .. tostring( self.m_PlayerID ) .. " " .. tostring( self.m_UnitID ) ); end
             self.m_Escort.m_IsForceHide = false;
 			self.m_Escort:UpdateVisibility();
             self.m_Escort:SetEscort( nil );
@@ -719,9 +719,9 @@ local g_UnitFlagClass =
         self.m_Escort = newEscort;
             
 
-		-- RED <<<<< to do : add last plot somewhere and refer to it ?
+		-- RED	
 		---[[	
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
 		if pUnit == nil then
 			self:UpdateFlagOffset()
 			return;
@@ -751,7 +751,7 @@ local g_UnitFlagClass =
 					escortFlag:UpdateFlagOffset()
 				end
 			end
-		else -- RED >>>>>
+		else --]]
 			self:UpdateFlagOffset()
 		end
     end,
@@ -761,8 +761,8 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
     UpdateCargo = function( self )
         
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
-        if( pUnit:CargoSpace() <= 0 ) then
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
+        if( pUnit == nil or pUnit:CargoSpace() <= 0 ) then
             return;
         end
         
@@ -790,7 +790,7 @@ local g_UnitFlagClass =
             controlTable = {};
             self.m_CargoControls.PullDown:BuildEntry( "UnitInstance", controlTable );
             controlTable.Button:SetText( pUnit:GetName() );
-            controlTable.Button:SetVoids( self.m_iPlayer, self.m_UnitID );
+            controlTable.Button:SetVoids( self.m_playerID, self.m_UnitID );
             if( pUnit:MovesLeft() > 0 ) then
                 controlTable.Button:SetAlpha( 1.0 );
             else
@@ -810,7 +810,7 @@ local g_UnitFlagClass =
                     self.m_CargoControls.PullDown:BuildEntry( "UnitInstance", controlTable );
                     
                     controlTable.Button:SetText( pPlotUnit:GetName() );
-                    controlTable.Button:SetVoids( self.m_iPlayer, pPlotUnit:GetID() );
+                    controlTable.Button:SetVoids( self.m_playerID, pPlotUnit:GetID() );
                     
                     if( pPlotUnit:MovesLeft() > 0 ) then
                         self.m_CargoIsActive = true;
@@ -858,7 +858,7 @@ local g_UnitFlagClass =
 		self.m_IsDimmed = bDim;
         self:UpdateDimmedState();
         
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if( pUnit:IsCargo() and self.m_CarrierFlag ~= nil ) then
 		    self.m_CarrierFlag:UpdateCargo();
 	    elseif( self.m_CargoControls ~= nil ) then
@@ -935,7 +935,7 @@ local g_UnitFlagClass =
     ------------------------------------------------------------------
 	UpdateFlagOffset = function( self )
 	
-		local pUnit = Players[ self.m_iPlayer ]:GetUnitByID( self.m_UnitID );
+		local pUnit = Players[ self.m_PlayerID ]:GetUnitByID( self.m_UnitID );
         if pUnit == nil then
 			return;
 		end	
@@ -949,7 +949,7 @@ local g_UnitFlagClass =
         local offset = Vector2( 0, 0 );
         	            
         if pUnit:IsGarrisoned() then
-            if( Game.GetActiveTeam() == Players[ self.m_iPlayer ]:GetTeam() ) then
+            if( Game.GetActiveTeam() == Players[ self.m_PlayerID ]:GetTeam() ) then
 				offset = GarrisonOffset;
 			else
 				offset = GarrisonOtherOffset;
@@ -988,7 +988,7 @@ local g_UnitFlagClass =
 
 			if( plot:GetNumUnits() > 1 ) then
 				for i = 0, plot:GetNumUnits() - 1, 1 do
-					if( g_PrintDebug ) then print( string.format( "Offset for multiple unit: Player[%i] Unit[%i] - %i", self.m_iPlayer, self.m_UnitID, i ) ); end
+					if( g_PrintDebug ) then print( string.format( "Offset for multiple unit: Player[%i] Unit[%i] - %i", self.m_PlayerID, self.m_UnitID, i ) ); end
 				
 					local test = plot:GetUnit( i );
 					if (test ~= nil and test:IsCombatUnit()) then
@@ -1003,19 +1003,19 @@ local g_UnitFlagClass =
 					end
 				end        
 			end
-			if numSimilarUnit > 0 then
-				 --horizOffset = math.floor(-((35/numSimilarUnit)/2)+((35/numSimilarUnit)*posUnit))
-				 local width = math.min(horizIconSize*numSimilarUnit, maxWidth)
-				 horizOffset = math.floor(-(width/2)+((width/numSimilarUnit)*posUnit))
-			end
 			if self.m_IsCivilian and bHasCombatUnit then
 				if( g_PrintDebug ) then print( string.format( "Civilian unit with combat unit..." ) ); end
-				if plot:IsCity() then -- adjust for city flag
+				if plot:IsCity() then
 					vertOffset = math.floor(vertIconSize/2)
 				else
 					vertOffset = vertIconSize
 				end
 			end
+			if numSimilarUnit > 0 then
+				 --horizOffset = math.floor(-((35/numSimilarUnit)/2)+((35/numSimilarUnit)*posUnit))
+				 local width = math.min(horizIconSize*numSimilarUnit, maxWidth)
+				 horizOffset = math.floor(-(width/2)+((width/numSimilarUnit)*posUnit))
+			end		
 			MultiUnitOffset = Vector2( horizOffset, vertOffset );
 			offset = VecAdd( offset, MultiUnitOffset );
 		end
@@ -1033,21 +1033,21 @@ local g_UnitFlagClass =
 -------------------------------------------------
 -- On Unit Created
 -------------------------------------------------
-function OnUnitCreated( iPlayer, unitID, hexVec, unitType, cultureType, civID, primaryColor, secondaryColor, unitFlagIndex, fogState, selected, military, notInvisible )
-    if( Players[ iPlayer ] == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+function OnUnitCreated( playerID, unitID, hexVec, unitType, cultureType, civID, primaryColor, secondaryColor, unitFlagIndex, fogState, selected, military, notInvisible )
+    if( Players[ playerID ] == nil or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
     
     -- support for debug panel
-    g_LastiPlayer = iPlayer;
+    g_LastPlayerID = playerID;
     g_LastUnitID   = unitID;
     
-    if( g_PrintDebug ) then print( "  Unit Created: " .. tostring( iPlayer ) .. " " .. tostring( unitID ) .. " " .. fogState ); end
+    if( g_PrintDebug ) then print( "  Unit Created: " .. tostring( playerID ) .. " " .. tostring( unitID ) .. " " .. fogState ); end
     
-    g_UnitFlagClass:new( iPlayer, unitID, fogState, not notInvisible );
+    g_UnitFlagClass:new( playerID, unitID, fogState, not notInvisible );
 end
 Events.SerialEventUnitCreated.Add( OnUnitCreated );
 
@@ -1057,21 +1057,21 @@ Events.SerialEventUnitCreated.Add( OnUnitCreated );
 -- On Unit Position Changed
 -- sent by the engine while it walks a unit around
 -------------------------------------------------
-function OnUnitPositionChanged( iPlayer, unitID, unitPosition )
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() )
-        --Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        --Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+function OnUnitPositionChanged( playerID, unitID, unitPosition )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() )
+        --Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        --Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
     
-    if( g_MasterList[ iPlayer ] == nil or
-        g_MasterList[ iPlayer ][ unitID ] == nil ) 
+    if( g_MasterList[ playerID ] == nil or
+        g_MasterList[ playerID ][ unitID ] == nil ) 
     then
-        --print( string.format( "Unit not found for OnUnitMove: Player[%i] Unit[%i]", iPlayer, unitID ) );
+        --print( string.format( "Unit not found for OnUnitMove: Player[%i] Unit[%i]", playerID, unitID ) );
     else                
-		local pUnit = Players[ iPlayer ]:GetUnitByID( unitID );
+		local pUnit = Players[ playerID ]:GetUnitByID( unitID );
 		if (pUnit ~= nil and pUnit:IsGarrisoned() ) then			
             -- When garrisoned, we want to line up the icon with the city banner.  
             -- Some units sit at different heights, so repostion the icon world position to match the city banner
@@ -1081,7 +1081,7 @@ function OnUnitPositionChanged( iPlayer, unitID, unitPosition )
         
         local position = VecAdd( unitPosition, CityWorldPositionOffset );
                 	
-        g_MasterList[ iPlayer ][ unitID ]:UnitMove( position.x, position.y, position.z );
+        g_MasterList[ playerID ][ unitID ]:UnitMove( position.x, position.y, position.z );
     end
 end
 Events.LocalMachineUnitPositionChanged.Add( OnUnitPositionChanged );
@@ -1090,22 +1090,22 @@ Events.LocalMachineUnitPositionChanged.Add( OnUnitPositionChanged );
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
-function OnFlagTypeChange( iPlayer, unitID )
+function OnFlagTypeChange( playerID, unitID )
         
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
     
-    if( g_MasterList[ iPlayer ] == nil or
-        g_MasterList[ iPlayer ][ unitID ] == nil ) 
+    if( g_MasterList[ playerID ] == nil or
+        g_MasterList[ playerID ][ unitID ] == nil ) 
     then
-        --print( string.format( "Unit not found for OnFlagTypeChange: Player[%i] Unit[%i]", iPlayer, unitID ) );
+        --print( string.format( "Unit not found for OnFlagTypeChange: Player[%i] Unit[%i]", playerID, unitID ) );
     else
-        local unit = g_MasterList[ iPlayer ][ unitID ];
+        local unit = g_MasterList[ playerID ][ unitID ];
         unit:UpdateFlagType();
         unit:UpdateFlagOffset();
     end
@@ -1118,9 +1118,9 @@ Events.UnitEmbark.Add( OnFlagTypeChange );
 -------------------------------------------------
 -- nukes teleport instead of moving
 -------------------------------------------------
-function OnUnitTeleported( i, j, iPlayer, unitID )
+function OnUnitTeleported( i, j, playerID, unitID )
     -- spoof out the move queue changed logic.
-    OnUnitMoveQueueChanged( iPlayer, unitID, false );
+    OnUnitMoveQueueChanged( playerID, unitID, false );
 end
 Events.SerialEventUnitTeleportedToHex.Add( OnUnitTeleported );
 	
@@ -1128,14 +1128,14 @@ Events.SerialEventUnitTeleportedToHex.Add( OnUnitTeleported );
 -------------------------------------------------
 -- On Unit Move Queue Changed
 -------------------------------------------------
-function OnUnitMoveQueueChanged( iPlayer, unitID, bRemainingMoves )
+function OnUnitMoveQueueChanged( playerID, unitID, bRemainingMoves )
 
 	if( not bRemainingMoves )then
 
-		local thisUnit = Players[ iPlayer ]:GetUnitByID( unitID );
-		if( thisUnit ~= nil and g_MasterList[ iPlayer ] ~= nil ) then
+		local thisUnit = Players[ playerID ]:GetUnitByID( unitID );
+		if( thisUnit ~= nil and g_MasterList[ playerID ] ~= nil ) then
 
-			local flag = g_MasterList[ iPlayer ][ unitID ];
+			local flag = g_MasterList[ playerID ][ unitID ];
 			
 			if( flag ~= nil ) then
 
@@ -1146,7 +1146,7 @@ function OnUnitMoveQueueChanged( iPlayer, unitID, bRemainingMoves )
     		    end
 
     			if( thisUnit:IsCargo() ) then
-    				flag.m_CarrierFlag = g_MasterList[ iPlayer ][ thisUnit:GetTransportUnit():GetID() ];
+    				flag.m_CarrierFlag = g_MasterList[ playerID ][ thisUnit:GetTransportUnit():GetID() ];
     			    
     			    if( flag.m_CarrierFlag ~= nil ) then
         			    flag.m_CarrierFlag:UpdateCargo();
@@ -1254,7 +1254,7 @@ end
 
 -------------------------------------------------
 -------------------------------------------------
-function OnCityCreated( hexPos, iPlayer, cityID, cultureType, eraType, continent, populationSize, size, fowState )
+function OnCityCreated( hexPos, playerID, cityID, cultureType, eraType, continent, populationSize, size, fowState )
     local gridPosX, gridPosY = ToGridFromHex( hexPos.x, hexPos.y );
     --print( "gridPosX, gridPosY: "..tostring(gridPosX)..","..tostring(gridPosY) );
     local pCityFlag = UpdateCityCargo( Map.GetPlot( gridPosX, gridPosY ) );
@@ -1273,9 +1273,9 @@ Events.SerialEventCityCreated.Add( OnCityCreated );
 -------------------------------------------------
 -- On Unit Garrison
 -------------------------------------------------
-function OnUnitGarrison( iPlayer, unitID, bGarrisoned )
-	if not UnitMoving(iPlayer, unitID) and g_MasterList[ iPlayer ] ~= nil then
-		local flag = g_MasterList[ iPlayer ][ unitID ];
+function OnUnitGarrison( playerID, unitID, bGarrisoned )
+	if not UnitMoving(playerID, unitID) and g_MasterList[ playerID ] ~= nil then
+		local flag = g_MasterList[ playerID ][ unitID ];
 		if flag ~= nil then
 			flag:GarrisonComplete(bGarrisoned);
 		end
@@ -1287,12 +1287,12 @@ Events.UnitGarrison.Add( OnUnitGarrison );
 -------------------------------------------------
 -- On Unit Destroyed
 -------------------------------------------------
-function OnUnitVisibility( iPlayer, unitID, visible, checkFlag, blendTime )
+function OnUnitVisibility( playerID, unitID, visible, checkFlag, blendTime )
 	if checkFlag then
-		if( g_MasterList[ iPlayer ] ~= nil and
-			g_MasterList[ iPlayer ][ unitID ] ~= nil ) then
+		if( g_MasterList[ playerID ] ~= nil and
+			g_MasterList[ playerID ][ unitID ] ~= nil ) then
 	        
-			local flag = g_MasterList[ iPlayer ][ unitID ];
+			local flag = g_MasterList[ playerID ][ unitID ];
 			flag.m_IsInvisible = not visible;
 			flag:UpdateVisibility();
 		end
@@ -1304,13 +1304,13 @@ Events.UnitVisibilityChanged.Add( OnUnitVisibility );
 -------------------------------------------------
 -- On Unit Destroyed
 -------------------------------------------------
-function OnUnitDestroyed( iPlayer, unitID )
-    if( g_MasterList[ iPlayer ] == nil or
-        g_MasterList[ iPlayer ][ unitID ] == nil ) 
+function OnUnitDestroyed( playerID, unitID )
+    if( g_MasterList[ playerID ] == nil or
+        g_MasterList[ playerID ][ unitID ] == nil ) 
     then
-        --print( string.format( "Unit not found for OnUnitDestroyed: Player[%i] Unit[%i]", iPlayer, unitID ) );
+        --print( string.format( "Unit not found for OnUnitDestroyed: Player[%i] Unit[%i]", playerID, unitID ) );
     else
-        g_MasterList[ iPlayer ][ unitID ]:destroy();
+        g_MasterList[ playerID ][ unitID ]:destroy();
     end
 end
 Events.SerialEventUnitDestroyed.Add( OnUnitDestroyed );
@@ -1319,24 +1319,24 @@ Events.SerialEventUnitDestroyed.Add( OnUnitDestroyed );
 -------------------------------------------------
 -- On Flag Clicked
 -------------------------------------------------
-function UnitFlagClicked( iPlayer, unitID )
-    Events.SerialEventUnitFlagSelected( iPlayer, unitID );
+function UnitFlagClicked( playerID, unitID )
+    Events.SerialEventUnitFlagSelected( playerID, unitID );
 end
 
 
-function UnitFlagEnter( iPlayer, unitID )
-    if( g_MasterList[ iPlayer ] ~= nil and
-        g_MasterList[ iPlayer ][ unitID ] ~= nil ) then
+function UnitFlagEnter( playerID, unitID )
+    if( g_MasterList[ playerID ] ~= nil and
+        g_MasterList[ playerID ][ unitID ] ~= nil ) then
         
-        g_MasterList[ iPlayer ][ unitID ]:OverrideDimmedFlag( true );
+        g_MasterList[ playerID ][ unitID ]:OverrideDimmedFlag( true );
     end
 end
 
-function UnitFlagExit( iPlayer, unitID )
-    if( g_MasterList[ iPlayer ] ~= nil and
-        g_MasterList[ iPlayer ][ unitID ] ~= nil ) then
+function UnitFlagExit( playerID, unitID )
+    if( g_MasterList[ playerID ] ~= nil and
+        g_MasterList[ playerID ][ unitID ] ~= nil ) then
         
-        local flag = g_MasterList[ iPlayer ][ unitID ];
+        local flag = g_MasterList[ playerID ][ unitID ];
         flag:OverrideDimmedFlag( flag.m_IsSelected );
     end
 end
@@ -1345,22 +1345,22 @@ end
 
 -------------------------------------------------
 -------------------------------------------------
-function OnUnitSelect( iPlayer, unitID, i, j, k, isSelected )
+function OnUnitSelect( playerID, unitID, i, j, k, isSelected )
 
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
     
-    if( g_MasterList[ iPlayer ] == nil or
-        g_MasterList[ iPlayer ][ unitID ] == nil ) 
+    if( g_MasterList[ playerID ] == nil or
+        g_MasterList[ playerID ][ unitID ] == nil ) 
     then
-        print( string.format( "Unit not found for OnUnitSelect: Player[%i] Unit[%i]", iPlayer, unitID ) );
+        print( string.format( "Unit not found for OnUnitSelect: Player[%i] Unit[%i]", playerID, unitID ) );
     else
-        g_MasterList[ iPlayer ][ unitID ]:UpdateSelected( isSelected );
+        g_MasterList[ playerID ][ unitID ]:UpdateSelected( isSelected );
     end
 end
 Events.UnitSelectionChanged.Add( OnUnitSelect );
@@ -1370,21 +1370,21 @@ Events.UnitSelectionChanged.Add( OnUnitSelect );
 --------------------------------------------------------------------------------
 -- Unit SetDamage was called - we only enter this function if the amount of damage actually changed
 --------------------------------------------------------------------------------
-function OnUnitSetDamage( iPlayer, unitID, iDamage, iPreviousDamage )
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+function OnUnitSetDamage( playerID, unitID, iDamage, iPreviousDamage )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
     
-    if( g_MasterList[ iPlayer ] == nil or
-        g_MasterList[ iPlayer ][ unitID ] == nil ) 
+    if( g_MasterList[ playerID ] == nil or
+        g_MasterList[ playerID ][ unitID ] == nil ) 
     then
-        --print( "Unit not found for OnUnitSetDamage: Player[" .. tostring( iPlayer ) .. "] Unit[" .. tostring( unitID ) .. "]" );
+        --print( "Unit not found for OnUnitSetDamage: Player[" .. tostring( playerID ) .. "] Unit[" .. tostring( unitID ) .. "]" );
     else
-        g_MasterList[ iPlayer ][ unitID ]:UpdateHealth();
+        g_MasterList[ playerID ][ unitID ]:UpdateHealth();
     end
 end
 Events.SerialEventUnitSetDamage.Add( OnUnitSetDamage );
@@ -1392,17 +1392,17 @@ Events.SerialEventUnitSetDamage.Add( OnUnitSetDamage );
 --------------------------------------------------------------------------------
 -- A unit has changed its name, update the tool tip string
 --------------------------------------------------------------------------------
-function OnUnitNameChanged( iPlayer, unitID )
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+function OnUnitNameChanged( playerID, unitID )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
     
-    if( g_MasterList[ iPlayer ] ~= nil ) then
-		local pFlag = g_MasterList[ iPlayer ][ unitID ];
+    if( g_MasterList[ playerID ] ~= nil ) then
+		local pFlag = g_MasterList[ playerID ][ unitID ];
 		if (pFlag ~= nil) then
 			pFlag:UpdateName();
 		end
@@ -1417,7 +1417,7 @@ Events.UnitNameChanged.Add( OnUnitNameChanged );
 function OnHexFogEvent( hexPos, fogState, bWholeMap )
     if( bWholeMap ) 
     then
-        for iPlayer,playerTable in pairs( g_MasterList ) 
+        for playerID,playerTable in pairs( g_MasterList ) 
         do
             for unitID,flag in pairs( playerTable ) 
             do
@@ -1474,16 +1474,16 @@ Events.HexFOWStateChanged.Add( OnHexFogEvent );
 ------------------------------------------------------------
 -- this goes off when a unit moves into or out of the fog
 ------------------------------------------------------------
-function OnUnitFogEvent( iPlayer, unitID, fogState )
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+function OnUnitFogEvent( playerID, unitID, fogState )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
 
-    playerTable = g_MasterList[ iPlayer ];
+    playerTable = g_MasterList[ playerID ];
     if( playerTable ~= nil ) 
     then
         local flag = playerTable[ unitID ];
@@ -1500,27 +1500,27 @@ Events.UnitStateChangeDetected.Add( OnUnitFogEvent );
 ------------------------------------------------------------
 -- this goes off when gameplay decides a unit's flag should be dimmed or not
 ------------------------------------------------------------
-function OnDimEvent( iPlayer, unitID, bDim )
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+function OnDimEvent( playerID, unitID, bDim )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
 
-    playerTable = g_MasterList[ iPlayer ];
+    playerTable = g_MasterList[ playerID ];
     if( playerTable ~= nil ) 
     then
         local flag = playerTable[ unitID ];
         if( flag ~= nil ) 
         then
         	local active_team = Players[Game.GetActivePlayer()]:GetTeam();
-        	local team = Players[iPlayer]:GetTeam();
+        	local team = Players[playerID]:GetTeam();
         	
         	if( active_team == team )
         	then
-                --print( "  Unit dim: " .. tostring( iPlayer ) .. " " .. tostring( unitID ) .. " " .. iDim );
+                --print( "  Unit dim: " .. tostring( playerID ) .. " " .. tostring( unitID ) .. " " .. iDim );
                 flag:SetDim( bDim  );
         	end
         end
@@ -1533,25 +1533,25 @@ Events.UnitShouldDimFlag.Add( OnDimEvent );
 ------------------------------------------------------------
 -- this goes off when gameplay decides a unit is threatening and wants it marked
 ------------------------------------------------------------
-function OnMarkThreateningEvent( iPlayer, unitID, bMark )
+function OnMarkThreateningEvent( playerID, unitID, bMark )
 	
-	--print("Marking Unit as Threatening: " .. tostring(iPlayer) .. ", " .. tostring(unitID) .. ", " .. tostring(bMark));
+	--print("Marking Unit as Threatening: " .. tostring(playerID) .. ", " .. tostring(unitID) .. ", " .. tostring(bMark));
 	
-    if( Players[ iPlayer ] == nil or
-		not Players[ iPlayer ]:IsAlive() or
-        Players[ iPlayer ]:GetUnitByID( unitID ) == nil or
-        Players[ iPlayer ]:GetUnitByID( unitID ):IsDead() )
+    if( Players[ playerID ] == nil or
+		not Players[ playerID ]:IsAlive() or
+        Players[ playerID ]:GetUnitByID( unitID ) == nil or
+        Players[ playerID ]:GetUnitByID( unitID ):IsDead() )
     then
         return;
     end
 
-    playerTable = g_MasterList[ iPlayer ];
+    playerTable = g_MasterList[ playerID ];
     if( playerTable ~= nil ) 
     then
         local flag = playerTable[ unitID ];
         if( flag ~= nil ) 
         then
-            --print( "  Unit mark threatening: " .. tostring( iPlayer ) .. " " .. tostring( unitID ) .. " " .. tostring(bMark) );
+            --print( "  Unit mark threatening: " .. tostring( playerID ) .. " " .. tostring( unitID ) .. " " .. tostring(bMark) );
             flag:SetFlash(bMark);
         end
     end
@@ -1570,7 +1570,7 @@ Events.UnitMarkThreatening.Add( OnMarkThreateningEvent );
 -- -------------------------------------------------------
 -- temp to make updating units easier
 -- -------------------------------------------------------
-g_LastiPlayer = 0;
+g_LastPlayerID = 0;
 g_LastUnitID   = 0;
 
 
@@ -1606,7 +1606,7 @@ end
 ------------------------------------------------------------
 function OnStrategicViewStateChanged( bStrategicView, bCityBanners )
 	g_GarrisonedUnitFlagsInStrategicView = bStrategicView and bCityBanners;
-	for iPlayer,playerTable in pairs( g_MasterList ) 
+	for playerID,playerTable in pairs( g_MasterList ) 
 	do
 		for unitID,flag in pairs( playerTable ) 
 		do
@@ -1619,7 +1619,7 @@ Events.StrategicViewStateChanged.Add(OnStrategicViewStateChanged);
 
 ------------------------------------------------------------
 ------------------------------------------------------------
-function OnCityDestroyed( hexPos, iPlayer, cityID )
+function OnCityDestroyed( hexPos, playerID, cityID )
     local pPlot = Map.GetPlot( ToGridFromHex( hexPos.x, hexPos.y ) );
     if( pPlot ~= nil ) then
         local count = pPlot:GetNumUnits();
@@ -1752,7 +1752,7 @@ ContextPtr:SetShutdown( OnShutdown );
 ----------------------------------------------------------------
 function OnActivePlayerChanged( iActivePlayer, iPrevActivePlayer )
 
-	local iActiveiPlayer = Game.GetActivePlayer();
+	local iActivePlayerID = Game.GetActivePlayer();
 	
     if( g_SelectedFlag ~= nil ) then
         g_SelectedFlag.m_Instance.Anchor:ChangeParent( Controls.MilitaryFlags );
@@ -1760,11 +1760,11 @@ function OnActivePlayerChanged( iActivePlayer, iPrevActivePlayer )
     end
 	
 	-- Rebuild all the tool tip strings.
-	for iPlayer,playerTable in pairs( g_MasterList ) 
+	for playerID,playerTable in pairs( g_MasterList ) 
 	do
-		local pPlayer = Players[ iPlayer ];
+		local pPlayer = Players[ playerID ];
 		
-		local bIsActivePlayer = ( iPlayer == iActivePlayer );
+		local bIsActivePlayer = ( playerID == iActivePlayer );
 				
 		-- Only need to do this for human players
 		if (pPlayer:IsHuman()) then	
